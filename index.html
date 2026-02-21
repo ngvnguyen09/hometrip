@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Trip Pay</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+        input, select, textarea { font-size: 16px !important; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="bg-gray-50 text-slate-900">
+
+    <div id="app" class="max-w-md mx-auto min-h-screen relative pb-28 bg-white shadow-2xl"></div>
+
+    <script>
+        let state = {
+            trips: JSON.parse(localStorage.getItem('tp_data')) || [],
+            currentTripId: null,
+            view: 'home'
+        };
+
+        const save = () => {
+            localStorage.setItem('tp_data', JSON.stringify(state.trips));
+            render();
+        };
+
+        const fmt = (v) => new Intl.NumberFormat('vi-VN').format(v) + 'đ';
+
+        const getNow = () => {
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            return now.toISOString().slice(0, 16);
+        };
+
+        const icon = {
+            plus: `<svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-7-7v14"/></svg>`,
+            home: `<svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>`,
+            chart: `<svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>`,
+            trash: `<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>`,
+            back: `<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>`,
+            clock: `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`
+        };
+
+        function render() {
+            const app = document.getElementById('app');
+            const trip = state.trips.find(t => t.id === state.currentTripId);
+
+            if (state.view === 'home') app.innerHTML = viewHome();
+            else if (state.view === 'setup') app.innerHTML = viewSetup();
+            else if (state.view === 'detail') app.innerHTML = viewDetail(trip);
+            else if (state.view === 'summary') app.innerHTML = viewSummary(trip);
+
+            if (state.currentTripId && state.view !== 'home') app.innerHTML += viewNav();
+        }
+
+        function viewHome() {
+            return `
+                <div class="p-6">
+                    <header class="mb-10 pt-4">
+                        <h1 class="text-4xl font-extrabold tracking-tighter">Trip Pay</h1>
+                        <p class="text-slate-400 font-bold uppercase text-[10px] tracking-widest mt-1">Dữ liệu lưu tại máy</p>
+                    </header>
+                    <button onclick="state.view='setup'; render();" class="w-full bg-blue-600 text-white p-6 rounded-3xl shadow-xl flex items-center justify-between mb-10 active:scale-95 transition-all">
+                        <div class="text-left">
+                            <p class="text-xl font-extrabold">Chuyến đi mới</p>
+                            <p class="text-[10px] opacity-70 font-bold uppercase tracking-widest">Bắt đầu ghi chép</p>
+                        </div>
+                        <div class="bg-white/20 p-3 rounded-full">${icon.plus}</div>
+                    </button>
+                    <div class="space-y-4">
+                        <h2 class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Lịch sử chuyến đi</h2>
+                        ${state.trips.length === 0 ? `<p class="text-center py-10 text-slate-300 italic">Chưa có dữ liệu</p>` : 
+                            state.trips.map(t => `
+                                <div onclick="state.currentTripId='${t.id}'; state.view='detail'; render();" class="bg-gray-50 p-5 rounded-3xl flex justify-between items-center active:bg-blue-50">
+                                    <div class="flex-1 truncate pr-4">
+                                        <h3 class="font-bold text-slate-800">${t.name}</h3>
+                                        <p class="text-[10px] text-slate-400 font-bold uppercase">${t.families.length} gia đình</p>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-blue-600 font-black">${fmt(t.expenses.reduce((s,e)=>s+e.amount,0))}</p>
+                                    </div>
+                                </div>
+                            `).join('')
+                        }
+                    </div>
+                </div>
+            `;
+        }
+
+        function viewSetup() {
+            return `
+                <div class="p-6">
+                    <button onclick="state.view='home'; render();" class="mb-8 flex items-center gap-1 text-slate-400 font-bold text-[10px] uppercase tracking-widest">
+                        ${icon.back} Quay lại
+                    </button>
+                    <h2 class="text-3xl font-black mb-8 italic">Thiết lập</h2>
+                    <div class="bg-gray-50 p-6 rounded-[2.5rem] space-y-6">
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-black uppercase text-slate-400 ml-2">Tên chuyến đi</label>
+                            <input id="in_name" type="text" placeholder="Ví dụ: Vũng Tàu 2024" class="w-full p-4 rounded-2xl font-bold outline-none shadow-sm">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-black uppercase text-slate-400 ml-2">Tên các gia đình (cách nhau dấu phẩy)</label>
+                            <textarea id="in_fams" rows="3" placeholder="Nhà Nam, Nhà Lan..." class="w-full p-4 rounded-2xl font-bold outline-none shadow-sm resize-none"></textarea>
+                        </div>
+                        <button onclick="handleCreate()" class="w-full bg-blue-600 text-white py-5 rounded-2xl font-black shadow-lg active:scale-95 transition-all">BẮT ĐẦU</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function viewDetail(trip) {
+            const total = trip.expenses.reduce((s,e) => s + e.amount, 0);
+            return `
+                <div class="bg-white sticky top-0 z-20 p-6 border-b flex justify-between items-center shadow-sm">
+                    <div class="truncate pr-4">
+                        <h2 class="text-xl font-extrabold truncate">${trip.name}</h2>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase">Tổng chi tiêu</p>
+                    </div>
+                    <div class="text-right shrink-0">
+                        <p class="text-blue-600 font-black text-xl">${fmt(total)}</p>
+                        <button onclick="handleDelTrip('${trip.id}')" class="text-slate-200 active:text-red-500">${icon.trash}</button>
+                    </div>
+                </div>
+                <div class="p-4 space-y-6">
+                    <button onclick="state.view='summary'; render();" class="w-full bg-blue-50 text-blue-600 py-4 rounded-2xl font-black flex items-center justify-center gap-2 border border-blue-100 active:scale-95 transition-all uppercase text-xs tracking-widest">
+                        ${icon.chart} Xem tổng quan & Chia tiền
+                    </button>
+
+                    ${trip.status !== 'completed' ? `
+                        <div class="bg-gray-50 p-6 rounded-[2.5rem] space-y-4">
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="text-[9px] font-black uppercase text-slate-400 ml-2">Lý do chi trả</label>
+                                    <input id="ex_res" type="text" placeholder="Taxi, ăn trưa..." class="w-full p-4 rounded-xl font-bold outline-none shadow-sm">
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="text-[9px] font-black uppercase text-slate-400 ml-2">Số tiền</label>
+                                        <input id="ex_amt" type="number" inputmode="numeric" placeholder="0" class="w-full p-4 rounded-xl font-black text-blue-600 outline-none shadow-sm">
+                                    </div>
+                                    <div>
+                                        <label class="text-[9px] font-black uppercase text-slate-400 ml-2">Người chi</label>
+                                        <select id="ex_pay" class="w-full p-4 rounded-xl font-bold outline-none shadow-sm bg-white appearance-none">
+                                            ${trip.families.map(f => `<option value="${f}">${f}</option>`).join('')}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="text-[9px] font-black uppercase text-slate-400 ml-2 flex items-center gap-1">${icon.clock} Thời gian chi</label>
+                                    <input id="ex_time" type="datetime-local" value="${getNow()}" class="w-full p-4 rounded-xl font-bold text-slate-500 outline-none shadow-sm">
+                                </div>
+                            </div>
+                            <button onclick="handleAddEx()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black active:scale-95 transition-all shadow-md uppercase tracking-widest">Thêm chi tiêu</button>
+                        </div>
+                    ` : ''}
+
+                    <div class="space-y-3">
+                        <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Hoạt động chi tiền</h3>
+                        ${trip.expenses.map(e => `
+                            <div class="bg-white p-4 rounded-2xl flex justify-between items-center shadow-sm border border-gray-100">
+                                <div class="flex items-center gap-3 truncate">
+                                    <div class="bg-slate-50 p-2 rounded-xl text-center shrink-0">
+                                        <p class="text-[10px] font-black text-slate-800">${new Date(e.time).toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'})}</p>
+                                    </div>
+                                    <div class="truncate">
+                                        <p class="font-bold text-sm truncate">${e.reason}</p>
+                                        <p class="text-[9px] font-black text-slate-400 uppercase">${e.payer}</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2 shrink-0 ml-2">
+                                    <span class="font-black text-slate-700">${fmt(e.amount)}</span>
+                                    ${trip.status !== 'completed' ? `<button onclick="handleDelEx('${e.id}')" class="text-slate-200 active:text-red-400">${icon.trash}</button>` : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function viewSummary(trip) {
+            const total = trip.expenses.reduce((s,e) => s + e.amount, 0);
+            const stats = trip.families.map(f => ({
+                name: f,
+                spent: trip.expenses.filter(e => e.payer === f).reduce((s,e) => s+e.amount, 0)
+            }));
+
+            if (!trip.ratios) {
+                trip.ratios = {};
+                trip.families.forEach(f => trip.ratios[f] = 1);
+            }
+
+            const totalRatio = Object.values(trip.ratios).reduce((s,v) => s + v, 0);
+            const costUnit = totalRatio > 0 ? total / totalRatio : 0;
+
+            const res = trip.families.map(f => {
+                const should = trip.ratios[f] * costUnit;
+                const paid = stats.find(s => s.name === f).spent;
+                return { name: f, diff: paid - should, should, paid };
+            });
+
+            return `
+                <div class="p-6 pb-24 space-y-8">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-3xl font-black italic">Thống kê</h2>
+                        ${trip.status !== 'completed' ? `<button onclick="handleFinish()" class="text-[10px] font-black uppercase bg-green-100 text-green-600 px-4 py-2 rounded-full active:scale-95">Hoàn thành</button>` : ''}
+                    </div>
+
+                    <div class="bg-slate-900 text-white p-8 rounded-[3rem] text-center">
+                        <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Tổng cộng</p>
+                        <p class="text-4xl font-black mb-8 tracking-tighter">${fmt(total)}</p>
+                        
+                        <div class="grid grid-cols-2 gap-3 text-left">
+                            ${stats.map((s, i) => `
+                                <div class="bg-slate-800 p-3 rounded-2xl border border-slate-700">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <div class="w-2 h-2 rounded-full" style="background:${['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'][i%5]}"></div>
+                                        <span class="text-[9px] font-black uppercase text-slate-500 truncate">${s.name}</span>
+                                    </div>
+                                    <p class="font-bold text-xs">${fmt(s.spent)}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 border rounded-[2.5rem] space-y-6">
+                        <h3 class="font-black text-xs uppercase tracking-widest text-slate-400 text-center">Tỉ lệ chia tiền (Số người)</h3>
+                        <div class="space-y-4">
+                            ${trip.families.map(f => `
+                                <div class="flex justify-between items-center bg-gray-50 p-3 rounded-2xl">
+                                    <span class="font-bold">${f}</span>
+                                    <div class="flex items-center gap-2">
+                                        <input onchange="handleRat('${f}', this.value)" type="number" value="${trip.ratios[f]}" ${trip.status === 'completed' ? 'disabled' : ''} class="w-16 p-2 rounded-xl text-center font-black text-blue-600 outline-none">
+                                        <span class="text-[9px] font-black text-slate-300 uppercase">Người</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="pt-6 border-t border-dashed space-y-3">
+                            ${res.map(r => `
+                                <div class="p-4 rounded-3xl flex justify-between items-center ${r.diff >= 0 ? 'bg-green-50' : 'bg-red-50'}">
+                                    <div>
+                                        <p class="text-sm font-black">${r.name}</p>
+                                        <p class="text-[9px] font-bold text-slate-400 uppercase">Phải đóng: ${fmt(r.should)}</p>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="font-black text-lg ${r.diff >= 0 ? 'text-green-600' : 'text-red-600'}">${r.diff >= 0 ? '+' : ''}${fmt(r.diff)}</p>
+                                        <p class="text-[9px] font-black uppercase text-slate-400">${r.diff >= 0 ? 'Nhận lại' : 'Trả thêm'}</p>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <button onclick="handleExTxt()" class="w-full bg-slate-900 text-white py-5 rounded-2xl font-black active:scale-95 transition-all shadow-xl uppercase tracking-widest text-xs">Xuất báo cáo (.txt)</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function viewNav() {
+            const isDet = state.view === 'detail';
+            const isSum = state.view === 'summary';
+            return `
+                <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/95 backdrop-blur-sm border-t flex justify-around py-4 px-6 z-50">
+                    <button onclick="state.view='detail'; render();" class="flex flex-col items-center gap-1 ${isDet ? 'text-blue-600' : 'text-slate-300'}">
+                        ${icon.plus}<span class="text-[9px] font-black uppercase">Nhập tiền</span>
+                    </button>
+                    <button onclick="state.view='summary'; render();" class="flex flex-col items-center gap-1 ${isSum ? 'text-blue-600' : 'text-slate-300'}">
+                        ${icon.chart}<span class="text-[9px] font-black uppercase">Tổng quan</span>
+                    </button>
+                    <button onclick="state.view='home'; state.currentTripId=null; render();" class="flex flex-col items-center gap-1 text-slate-300">
+                        ${icon.home}<span class="text-[9px] font-black uppercase">Thoát</span>
+                    </button>
+                </nav>
+            `;
+        }
+
+        window.handleCreate = () => {
+            const name = document.getElementById('in_name').value.trim();
+            const families = document.getElementById('in_fams').value.split(',').map(f => f.trim()).filter(f => f);
+            if (!name || families.length === 0) return alert('Nhập tên chuyến đi và gia đình!');
+            const t = { id: Date.now().toString(), name, families, expenses: [], createdAt: new Date().toISOString(), status: 'active', ratios: {} };
+            families.forEach(f => t.ratios[f] = 1);
+            state.trips.unshift(t);
+            state.currentTripId = t.id;
+            state.view = 'detail';
+            save();
+        };
+
+        window.handleAddEx = () => {
+            const reason = document.getElementById('ex_res').value.trim();
+            const amount = parseFloat(document.getElementById('ex_amt').value);
+            const payer = document.getElementById('ex_pay').value;
+            const time = document.getElementById('ex_time').value;
+            if (!reason || isNaN(amount)) return alert('Nhập lý do và số tiền!');
+            const t = state.trips.find(x => x.id === state.currentTripId);
+            t.expenses.unshift({ id: Date.now().toString(), reason, amount, payer, time: new Date(time).toISOString() });
+            save();
+        };
+
+        window.handleDelEx = (id) => {
+            if(!confirm('Xóa khoản này?')) return;
+            const t = state.trips.find(x => x.id === state.currentTripId);
+            t.expenses = t.expenses.filter(e => e.id !== id);
+            save();
+        };
+
+        window.handleDelTrip = (id) => {
+            if(!confirm('Xóa vĩnh viễn chuyến đi này?')) return;
+            state.trips = state.trips.filter(t => t.id !== id);
+            state.currentTripId = null;
+            state.view = 'home';
+            save();
+        };
+
+        window.handleRat = (f, v) => {
+            const t = state.trips.find(x => x.id === state.currentTripId);
+            t.ratios[f] = parseFloat(v) || 0;
+            save();
+        };
+
+        window.handleFinish = () => {
+            if(!confirm('Kết thúc và khóa sổ?')) return;
+            state.trips.find(x => x.id === state.currentTripId).status = 'completed';
+            save();
+        };
+
+        window.handleExTxt = () => {
+            const t = state.trips.find(x => x.id === state.currentTripId);
+            let s = `BÁO CÁO: ${t.name.toUpperCase()}\n\n`;
+            const tot = t.expenses.reduce((a,b)=>a+b.amount,0);
+            s += `TỔNG CHI: ${fmt(tot)}\n\n`;
+            const tr = Object.values(t.ratios).reduce((a,b)=>a+b,0);
+            const cpu = tot/tr;
+            t.families.forEach(f => {
+                const p = t.expenses.filter(e=>e.payer===f).reduce((a,b)=>a+b.amount,0);
+                const sh = t.ratios[f]*cpu;
+                s += `${f.toUpperCase()}:\n- Đã chi: ${fmt(p)}\n- Phải đóng: ${fmt(sh)}\n- Kết quả: ${p>=sh ? 'Nhận lại' : 'Trả thêm'} ${fmt(Math.abs(p-sh))}\n\n`;
+            });
+            const b = new Blob([s], { type: 'text/plain' });
+            const u = URL.createObjectURL(b);
+            const a = document.createElement('a');
+            a.href = u; a.download = `Bao_cao_${t.name}.txt`; a.click();
+        };
+
+        render();
+    </script>
+</body>
+</html>
+
