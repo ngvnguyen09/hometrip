@@ -22,6 +22,9 @@
 
     <div id="app" class="max-w-md mx-auto min-h-screen relative pb-28 bg-white shadow-2xl"></div>
 
+    <!-- Hidden input for Import -->
+    <input type="file" id="import_file" class="hidden" accept=".json" onchange="processImport(event)">
+
     <script>
         let state = {
             trips: JSON.parse(localStorage.getItem('tp_v4')) || [],
@@ -61,7 +64,9 @@
             chart: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>`,
             trash: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>`,
             back: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>`,
-            edit: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`
+            edit: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
+            download: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>`,
+            upload: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>`
         };
 
         function render() {
@@ -88,23 +93,32 @@
                 <div class="p-6 safe-top">
                     <header class="mb-10 pt-4">
                         <h1 class="text-4xl font-extrabold tracking-tighter italic">Trip Pay</h1>
-                        <p class="text-slate-400 font-bold uppercase text-[10px] tracking-widest mt-1">Dữ liệu an toàn trên iPhone</p>
+                        <div class="flex items-center gap-4 mt-2">
+                             <button onclick="handleExport()" class="flex items-center gap-1.5 text-blue-600 font-bold text-[10px] uppercase tracking-wider bg-blue-50 px-3 py-1.5 rounded-full active:scale-95 transition-all">
+                                ${icons.download} Sao lưu
+                             </button>
+                             <button onclick="document.getElementById('import_file').click()" class="flex items-center gap-1.5 text-amber-600 font-bold text-[10px] uppercase tracking-wider bg-amber-50 px-3 py-1.5 rounded-full active:scale-95 transition-all">
+                                ${icons.upload} Khôi phục
+                             </button>
+                        </div>
                     </header>
                     <button onclick="state.view='setup'; render();" class="w-full bg-blue-600 text-white p-6 rounded-[2.5rem] shadow-xl flex items-center justify-between mb-10 active:scale-95 transition-all">
                         <div class="text-left font-extrabold"><p class="text-xl">Chuyến mới</p><p class="text-[10px] opacity-70 uppercase tracking-widest">Bắt đầu ngay</p></div>
                         <div class="bg-white/20 p-3 rounded-full">${icons.plus}</div>
                     </button>
                     <div class="space-y-4">
-                        <h2 class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Lịch sử</h2>
-                        ${state.trips.map(t => `
-                            <div onclick="state.currentTripId='${t.id}'; state.view='detail'; render();" class="bg-slate-50 p-5 rounded-3xl flex justify-between items-center active:bg-blue-50">
-                                <div class="flex-1 truncate pr-4">
-                                    <h3 class="font-bold text-slate-800">${t.name}</h3>
-                                    <p class="text-[10px] text-slate-400 font-bold uppercase">${t.families.length} gia đình</p>
+                        <h2 class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Lịch sử chuyến đi</h2>
+                        ${state.trips.length === 0 ? `<p class="text-center py-10 text-slate-300 italic text-sm">Chưa có chuyến đi nào được lưu</p>` : 
+                            state.trips.map(t => `
+                                <div onclick="state.currentTripId='${t.id}'; state.view='detail'; render();" class="bg-slate-50 p-5 rounded-3xl flex justify-between items-center active:bg-blue-50 transition-colors shadow-sm">
+                                    <div class="flex-1 truncate pr-4">
+                                        <h3 class="font-bold text-slate-800">${t.name}</h3>
+                                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-tight">${t.families.length} gia đình • ${t.expenses.length} mục</p>
+                                    </div>
+                                    <p class="text-blue-600 font-black">${fmt(t.expenses.reduce((s,e)=>s+e.amount,0))}</p>
                                 </div>
-                                <p class="text-blue-600 font-black">${fmt(t.expenses.reduce((s,e)=>s+e.amount,0))}</p>
-                            </div>
-                        `).join('')}
+                            `).join('')
+                        }
                     </div>
                 </div>
             `;
@@ -130,16 +144,16 @@
                 <div class="bg-white sticky top-0 z-20 p-6 border-b flex justify-between items-center shadow-sm safe-top">
                     <div class="truncate pr-4 flex-1">
                         ${state.isEditingName ? 
-                            `<input id="edit_tn" type="text" value="${trip.name}" onblur="handleSaveTripName(this.value)" autofocus class="w-full font-extrabold text-xl text-blue-600 bg-transparent">` :
-                            `<h2 onclick="state.isEditingName=true; render();" class="text-xl font-extrabold truncate flex items-center gap-2">${trip.name} <span class="text-slate-300">${icons.edit}</span></h2>`
+                            `<input id="edit_tn" type="text" value="${trip.name}" onblur="handleSaveTripName(this.value)" autofocus class="w-full font-extrabold text-xl text-blue-600 bg-transparent border-none">` :
+                            `<h2 onclick="state.isEditingName=true; render();" class="text-xl font-extrabold truncate flex items-center gap-2">${trip.name} <span class="text-slate-300 shrink-0">${icons.edit}</span></h2>`
                         }
                         <p class="text-[10px] font-bold text-slate-400 uppercase">Tổng chi: ${fmt(total)}</p>
                     </div>
                     <button onclick="handleDelTrip('${trip.id}')" class="text-slate-200 active:text-red-500 p-2">${icons.trash}</button>
                 </div>
                 <div class="p-4 space-y-6 pb-32">
-                    <div class="bg-slate-50 p-6 rounded-[2.5rem] space-y-3">
-                        <input id="ex_res" type="text" placeholder="Lý do chi..." class="w-full p-4 rounded-xl font-bold shadow-sm border-none">
+                    <div class="bg-slate-50 p-6 rounded-[2.5rem] space-y-3 shadow-inner">
+                        <input id="ex_res" type="text" placeholder="Chi cho việc gì..." class="w-full p-4 rounded-xl font-bold shadow-sm border-none">
                         <div class="grid grid-cols-2 gap-3">
                             <input id="ex_amt" type="number" inputmode="numeric" placeholder="Số tiền" class="w-full p-4 rounded-xl font-black text-blue-600 shadow-sm border-none">
                             <select id="ex_pay" class="w-full p-4 rounded-xl font-bold shadow-sm bg-white border-none appearance-none text-slate-700">
@@ -150,21 +164,21 @@
                             <label class="text-[9px] font-black uppercase text-slate-400 ml-2">Ngày & Giờ chi</label>
                             <input id="ex_time" type="datetime-local" value="${getNow()}" class="w-full p-4 rounded-xl font-bold text-slate-500 shadow-sm border-none bg-white">
                         </div>
-                        <textarea id="ex_note" placeholder="Ghi chú thêm (không bắt buộc)..." class="w-full p-4 rounded-xl font-bold shadow-sm border-none resize-none" rows="2"></textarea>
+                        <textarea id="ex_note" placeholder="Ghi chú thêm (tùy chọn)..." class="w-full p-4 rounded-xl font-bold shadow-sm border-none resize-none" rows="2"></textarea>
                         <button onclick="handleAddEx()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black active:scale-95 shadow-md uppercase text-xs tracking-widest mt-2">Lưu chi tiêu</button>
                     </div>
 
                     <div class="space-y-3">
-                        <h3 class="text-[10px] font-black text-slate-400 uppercase px-2 tracking-widest">Lịch sử hoạt động</h3>
+                        <h3 class="text-[10px] font-black text-slate-400 uppercase px-2 tracking-widest">Lịch sử</h3>
                         ${trip.expenses.map(e => `
                             <div onclick="state.editingExpId='${e.id}'; render();" class="bg-white p-4 rounded-2xl flex flex-col gap-1 shadow-sm border border-gray-100 active:bg-slate-50 transition-all">
                                 <div class="flex justify-between items-center">
                                     <span class="font-bold text-slate-800 text-sm truncate">${e.reason}</span>
-                                    <span class="font-black text-slate-700 shrink-0 ml-2">${fmt(e.amount)}</span>
+                                    <span class="font-black text-slate-700 shrink-0 ml-2 font-mono">${fmt(e.amount)}</span>
                                 </div>
-                                <div class="flex justify-between items-center text-[10px] font-bold text-slate-400">
+                                <div class="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
                                     <span>${e.payer} • ${getTimeLabel(e.time)}</span>
-                                    ${e.note ? `<span class="text-blue-400 truncate max-w-[50%] ml-2 italic lowercase font-normal italic"># ${e.note}</span>` : ''}
+                                    ${e.note ? `<span class="text-blue-400 truncate max-w-[40%] ml-2 normal-case font-normal italic font-jakarta"># ${e.note}</span>` : ''}
                                 </div>
                             </div>
                         `).join('')}
@@ -180,15 +194,15 @@
             }));
             return `
                 <div class="p-6 safe-top pb-32">
-                    <h2 class="text-3xl font-black italic mb-8 pt-4 text-slate-800">Thống kê</h2>
+                    <h2 class="text-3xl font-black italic mb-8 pt-4 text-slate-800 tracking-tight">Thống kê</h2>
                     <div class="bg-slate-900 text-white p-8 rounded-[3rem] text-center shadow-xl">
                         <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Tổng chi toàn chuyến</p>
-                        <p class="text-4xl font-black tracking-tighter mb-8">${fmt(total)}</p>
+                        <p class="text-4xl font-black tracking-tighter mb-8 font-mono">${fmt(total)}</p>
                         <div class="grid grid-cols-2 gap-3 text-left">
                             ${stats.map((s, i) => `
                                 <div class="bg-slate-800 p-3 rounded-2xl border border-slate-700">
                                     <span class="text-[8px] font-black uppercase text-slate-500 block truncate">${s.name}</span>
-                                    <p class="font-bold text-xs">${fmt(s.spent)}</p>
+                                    <p class="font-bold text-xs font-mono">${fmt(s.spent)}</p>
                                 </div>
                             `).join('')}
                         </div>
@@ -214,35 +228,35 @@
             return `
                 <div class="p-6 safe-top bg-white min-h-screen">
                     <button onclick="state.view='summary'; render();" class="mb-8 flex items-center gap-1 text-slate-400 font-bold text-[10px] uppercase tracking-widest">${icons.back} Quay lại</button>
-                    <h2 class="text-3xl font-black mb-1 italic text-slate-800">Chia tiền</h2>
-                    <p class="text-slate-400 text-[10px] font-bold uppercase mb-8">Tính toán theo số người/nhà</p>
+                    <h2 class="text-3xl font-black mb-1 italic text-slate-800 tracking-tight">Kết quả chia</h2>
+                    <p class="text-slate-400 text-[10px] font-bold uppercase mb-8 tracking-wider">Dựa trên số người từng nhà</p>
                     
                     <div class="space-y-6">
                         <div class="bg-slate-50 p-6 rounded-[2.5rem] space-y-4 shadow-inner">
                             <h3 class="text-[10px] font-black text-slate-400 uppercase text-center tracking-widest mb-2">Số người mỗi gia đình</h3>
                             ${trip.families.map(f => `
-                                <div class="flex justify-between items-center bg-white p-3 rounded-2xl shadow-sm">
+                                <div class="flex justify-between items-center bg-white p-3 rounded-2xl shadow-sm border border-slate-50">
                                     <span class="font-bold text-slate-700 ml-2">${f}</span>
                                     <div class="flex items-center gap-2">
-                                        <input onchange="handleRat('${f}', this.value)" type="number" value="${trip.ratios[f] || 1}" class="w-16 p-2 rounded-xl text-center font-black text-blue-600 bg-slate-50">
+                                        <input onchange="handleRat('${f}', this.value)" type="number" value="${trip.ratios[f] || 1}" class="w-16 p-2 rounded-xl text-center font-black text-blue-600 bg-slate-50 outline-none">
                                         <span class="text-[9px] font-black text-slate-300 uppercase mr-2">Người</span>
                                     </div>
                                 </div>
                             `).join('')}
                         </div>
                         <div class="space-y-3">
-                            <h3 class="text-[10px] font-black text-slate-400 uppercase px-2 tracking-widest">Kết quả chuyển khoản</h3>
+                            <h3 class="text-[10px] font-black text-slate-400 uppercase px-2 tracking-widest">Quyết toán chuyển khoản</h3>
                             ${trip.families.map(f => {
                                 const should = (trip.ratios[f] || 1) * costUnit;
                                 const paid = stats.find(s => s.name === f).spent;
                                 const diff = paid - should;
                                 return `<div class="p-4 rounded-3xl flex justify-between items-center ${diff>=0?'bg-green-50 border-green-100':'bg-rose-50 border-rose-100'} border">
-                                    <div class="flex-1 truncate pr-2"><p class="text-sm font-black text-slate-800 truncate">${f}</p><p class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Phải đóng: ${fmt(should)}</p></div>
-                                    <div class="text-right shrink-0"><p class="font-black text-lg ${diff>=0?'text-green-600':'text-rose-600'}">${diff>=0?'+':''}${fmt(diff)}</p><p class="text-[9px] font-black uppercase opacity-40 leading-none">${diff>=0?'Nhận lại':'Trả thêm'}</p></div>
+                                    <div class="flex-1 truncate pr-2"><p class="text-sm font-black text-slate-800 truncate">${f}</p><p class="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Cần đóng: ${fmt(should)}</p></div>
+                                    <div class="text-right shrink-0"><p class="font-black text-lg ${diff>=0?'text-green-600':'text-rose-600'} font-mono">${diff>=0?'+':''}${fmt(diff)}</p><p class="text-[9px] font-black uppercase opacity-40 leading-none">${diff>=0?'Nhận lại':'Trả thêm'}</p></div>
                                 </div>`;
                             }).join('')}
                         </div>
-                        <button onclick="handleExTxt()" class="w-full bg-slate-900 text-white py-5 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl">Tải báo cáo chi tiết</button>
+                        <button onclick="handleExTxt()" class="w-full bg-slate-900 text-white py-5 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all">Tải báo cáo .txt</button>
                     </div>
                 </div>
             `;
@@ -253,25 +267,25 @@
             if(!exp) return "";
             return `
                 <div class="fixed inset-0 z-50 modal-bg flex items-end">
-                    <div class="bg-white w-full rounded-t-[2.5rem] p-6 pb-12 animate-slideUp">
+                    <div class="bg-white w-full rounded-t-[2.5rem] p-6 pb-12 animate-slideUp shadow-2xl">
                         <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6"></div>
                         <div class="flex justify-between items-center mb-6 px-2">
                             <h3 class="font-black text-xl italic text-slate-800">Sửa hoạt động</h3>
-                            <button onclick="state.editingExpId=null; render();" class="text-slate-400 p-2 transform rotate-45">${icons.plus}</button>
+                            <button onclick="state.editingExpId=null; render();" class="text-slate-400 p-2 transform rotate-45 shrink-0">${icons.plus}</button>
                         </div>
                         <div class="space-y-4">
-                            <input id="ed_res" type="text" value="${exp.reason}" class="w-full p-4 bg-slate-50 rounded-xl font-bold border-none shadow-sm">
+                            <input id="ed_res" type="text" value="${exp.reason}" class="w-full p-4 bg-slate-50 rounded-xl font-bold border-none">
                             <div class="grid grid-cols-2 gap-3">
-                                <input id="ed_amt" type="number" inputmode="numeric" value="${exp.amount}" class="w-full p-4 bg-slate-50 rounded-xl font-black text-blue-600 border-none shadow-sm">
-                                <select id="ed_pay" class="w-full p-4 bg-slate-50 rounded-xl font-bold border-none shadow-sm">
+                                <input id="ed_amt" type="number" inputmode="numeric" value="${exp.amount}" class="w-full p-4 bg-slate-50 rounded-xl font-black text-blue-600 border-none">
+                                <select id="ed_pay" class="w-full p-4 bg-slate-50 rounded-xl font-bold border-none outline-none appearance-none">
                                     ${trip.families.map(f => `<option value="${f}" ${f===exp.payer?'selected':''}>${f}</option>`).join('')}
                                 </select>
                             </div>
-                            <input id="ed_time" type="datetime-local" value="${exp.time.slice(0,16)}" class="w-full p-4 bg-slate-50 rounded-xl font-bold text-slate-500 border-none shadow-sm">
-                            <textarea id="ed_note" placeholder="Ghi chú..." class="w-full p-4 bg-slate-50 rounded-xl font-bold border-none resize-none shadow-sm" rows="2">${exp.note || ''}</textarea>
+                            <input id="ed_time" type="datetime-local" value="${exp.time.slice(0,16)}" class="w-full p-4 bg-slate-50 rounded-xl font-bold text-slate-500 border-none">
+                            <textarea id="ed_note" placeholder="Ghi chú..." class="w-full p-4 bg-slate-50 rounded-xl font-bold border-none resize-none" rows="2">${exp.note || ''}</textarea>
                             <div class="flex gap-3 pt-4">
-                                <button onclick="handleDelEx('${exp.id}')" class="bg-rose-50 text-rose-500 px-6 rounded-xl font-black border border-rose-100">${icons.trash}</button>
-                                <button onclick="handleSaveEdit()" class="flex-1 bg-blue-600 text-white py-4 rounded-xl font-black shadow-lg shadow-blue-100 uppercase text-xs tracking-widest">Cập nhật</button>
+                                <button onclick="handleDelEx('${exp.id}')" class="bg-rose-50 text-rose-500 px-6 rounded-xl font-black border border-rose-100 active:scale-90 transition-all">${icons.trash}</button>
+                                <button onclick="handleSaveEdit()" class="flex-1 bg-blue-600 text-white py-4 rounded-xl font-black shadow-lg shadow-blue-100 uppercase text-xs tracking-widest active:scale-95 transition-all">Cập nhật</button>
                             </div>
                         </div>
                     </div>
@@ -292,7 +306,7 @@
         window.handleCreate = () => {
             const n = document.getElementById('in_name').value.trim();
             const f = document.getElementById('in_fams').value.split(',').map(x=>x.trim()).filter(x=>x);
-            if (!n || f.length === 0) return;
+            if (!n || f.length === 0) return alert('Nhập đủ thông tin tên và nhà!');
             const t = { id: Date.now().toString(), name: n, families: f, expenses: [], ratios: {} };
             f.forEach(x => t.ratios[x] = 1);
             state.trips.unshift(t); state.currentTripId = t.id; state.view = 'detail'; save();
@@ -304,7 +318,7 @@
             const p = document.getElementById('ex_pay').value;
             const t = document.getElementById('ex_time').value;
             const n = document.getElementById('ex_note').value.trim();
-            if (!r || isNaN(a)) return;
+            if (!r || isNaN(a)) return alert('Hãy nhập lý do và số tiền chi!');
             state.trips.find(x => x.id === state.currentTripId).expenses.unshift({ id: Date.now().toString(), reason: r, amount: a, payer: p, time: new Date(t).toISOString(), note: n });
             save();
         };
@@ -325,6 +339,44 @@
         window.handleDelTrip = (id) => { if(confirm('Xóa hết dữ liệu chuyến này?')) { state.trips=state.trips.filter(t=>t.id!==id); state.currentTripId=null; state.view='home'; save(); } };
         window.handleRat = (f, v) => { state.trips.find(x=>x.id===state.currentTripId).ratios[f]=parseFloat(v)||0; save(); };
         
+        // --- EXPORT / IMPORT LOGIC ---
+        window.handleExport = () => {
+            const dataStr = JSON.stringify(state.trips, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `TripPay_Backup_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        };
+
+        window.processImport = (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            if (!confirm('Lưu ý: Khôi phục dữ liệu sẽ THAY THẾ toàn bộ dữ liệu hiện có trên máy này. Bạn chắc chắn chứ?')) {
+                event.target.value = "";
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (Array.isArray(imported)) {
+                        state.trips = imported;
+                        save();
+                        alert('Khôi phục dữ liệu thành công!');
+                        location.reload(); // Refresh to clean state
+                    } else {
+                        alert('File dữ liệu không đúng định dạng!');
+                    }
+                } catch (err) {
+                    alert('Lỗi khi đọc file dữ liệu!');
+                }
+            };
+            reader.readAsText(file);
+        };
+
         window.handleExTxt = () => {
             const t = state.trips.find(x => x.id === state.currentTripId);
             const tot = t.expenses.reduce((a,b)=>a+b.amount,0);
@@ -336,7 +388,7 @@
                 s += `${f}: Chi ${fmt(p)} - Nghĩa vụ ${fmt(sh)} -> ${p>=sh?'Nhận':'Trả'} ${fmt(Math.abs(p-sh))}\n`;
             });
             const b = new Blob([s], { type: 'text/plain' });
-            const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `Report_${t.name}.txt`; a.click();
+            const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `Bao_cao_${t.name}.txt`; a.click();
         };
 
         render();
